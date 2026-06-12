@@ -18,7 +18,11 @@ load_dotenv()
 
 llm_endpoint = HuggingFaceEndpoint(
     repo_id="openai/gpt-oss-120b",
-    huggingfacehub_api_token=os.getenv("HF_API_KEY")
+    huggingfacehub_api_token=os.getenv("HF_API_KEY"),
+    task="text-generation",
+    max_new_tokens=5000,
+    temperature=0.7
+    
 )
 llm = ChatHuggingFace(llm=llm_endpoint)
 
