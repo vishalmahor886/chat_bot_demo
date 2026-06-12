@@ -1,11 +1,12 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-from  pydantic import BaseModel
-from backend.chain import get_chat_chain
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+
+from backend.graph import graph
 
 app = FastAPI()
-# ✅ CORS (REQUIRED for deployment)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,19 +15,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-chain = get_chat_chain()
 
 class ChatRequest(BaseModel):
-    message:str
+    message: str
+    thread_id: str
 
-def generate_stream(message:str):
-    for chunk in chain.stream({"input": message}):
-        if hasattr(chunk, "content") and chunk.content:
-            yield chunk.content
+
+@app.get("/")
+def home():
+    return {"status": "running"}
+
+def generate_stream(message: str, thread_id: str):
+
+    config = {
+        "configurable": {
+            "thread_id": thread_id
+        }
+    }
+
+    for event in graph.stream(
+        {"messages": [("human", message)]},
+        config=config
+    ):
+        if "chatbot" in event:
+            msg = event["chatbot"]["messages"][-1]
+
+            if hasattr(msg, "content") and msg.content:
+                yield msg.content
+
 
 @app.post("/chat")
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
+
     return StreamingResponse(
-        content=generate_stream(request.message),
+        generate_stream(request.message, request.thread_id),
         media_type="text/plain"
     )

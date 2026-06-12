@@ -1,21 +1,27 @@
+
 import streamlit as st
 import requests
-import time
+import uuid
 
 API_URL = "http://127.0.0.1:8000/chat"
 
-st.set_page_config(page_title="AI Chatbot", page_icon="🤖", layout="wide")
+# --------------------------------
+# PAGE CONFIG
+# --------------------------------
+st.set_page_config(
+    page_title="AI Chatbot",
+    page_icon="🤖",
+    layout="wide"
+)
 
-# 🎨 Advanced CSS + Animations
+# --------------------------------
+# CSS
+# --------------------------------
 st.markdown("""
 <style>
-body {
-    background: linear-gradient(135deg, #1e1e2f, #2c2c54);
-    color: white;
-}
 
 .chat-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: auto;
 }
 
@@ -25,7 +31,7 @@ body {
     margin: 8px 0;
     width: fit-content;
     max-width: 75%;
-    animation: fadeIn 0.3s ease-in-out;
+    word-wrap: break-word;
 }
 
 .user-msg {
@@ -36,113 +42,162 @@ body {
 
 .bot-msg {
     background: #3a3a5a;
-    margin-right: auto;
-    color:white;
+    color: white;
 }
 
-@keyframes fadeIn {
-    from {opacity: 0; transform: translateY(10px);}
-    to {opacity: 1; transform: translateY(0);}
-}
-
-/* Typing cursor */
-.cursor {
-    display: inline-block;
-    width: 6px;
-    background-color: white;
-    margin-left: 3px;
-    animation: blink 1s infinite;
-}
-
-@keyframes blink {
-    0%, 50%, 100% {opacity: 1;}
-    25%, 75% {opacity: 0;}
-}
-
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background: #1a1a2e;
-    color:white;
-}
-div.stButton > button {
-    background-color: #ff4b4b !important;   /* red */
-    color: white !important;
-    border-radius: 8px;
-    padding: 8px 16px;
-    border: none;
-    font-weight: 600;
-}
-
-/* Hover effect */
-div.stButton > button:hover {
-    background-color: #ff1f1f !important;
-    color: white !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# 🧠 Sidebar
-with st.sidebar:
-    st.title("⚙️ Settings")
+# --------------------------------
+# SESSION STATE
+# --------------------------------
+if "chats" not in st.session_state:
+    st.session_state.chats = {}
 
-    if st.button("🧹 Clear Chat"):
-        st.session_state.chat_history = []
+if "chat_data" not in st.session_state:
+    st.session_state.chat_data = {}
+
+if "thread_id" not in st.session_state:
+    first_id = str(uuid.uuid4())
+
+    st.session_state.thread_id = first_id
+    st.session_state.chats[first_id] = "New Chat"
+    st.session_state.chat_data[first_id] = []
+
+# --------------------------------
+# SIDEBAR
+# --------------------------------
+with st.sidebar:
+
+    st.title("🤖 AI Chatbot")
+
+    if st.button("🆕 New Chat", use_container_width=True):
+
+        new_id = str(uuid.uuid4())
+
+        st.session_state.thread_id = new_id
+        st.session_state.chats[new_id] = "New Chat"
+        st.session_state.chat_data[new_id] = []
+
+        st.rerun()
 
     st.markdown("---")
-    st.write("Model: Groq LLaMA 3.1")
-    st.write("Streaming: Enabled ⚡")
+    st.subheader("💬 Chats")
 
-# 🧠 Session state
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    for tid, title in st.session_state.chats.items():
+
+        if st.button(title, key=tid, use_container_width=True):
+
+            st.session_state.thread_id = tid
+            st.rerun()
+
+# --------------------------------
+# CURRENT CHAT
+# --------------------------------
+current_thread = st.session_state.thread_id
+chat_history = st.session_state.chat_data[current_thread]
 
 st.title("🤖 AI Chatbot")
 
-# 📜 Chat container
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+# --------------------------------
+# DISPLAY MESSAGES
+# --------------------------------
+for sender, message in chat_history:
 
-for sender, message in st.session_state.chat_history:
     if sender == "You":
-        st.markdown(f'<div class="user-msg">{message}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="user-msg">{message}</div>',
+            unsafe_allow_html=True
+        )
+
     else:
-        st.markdown(f'<div class="bot-msg">{message}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="bot-msg">{message}</div>',
+            unsafe_allow_html=True
+        )
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-# 💬 Input (bottom style)
+# --------------------------------
+# USER INPUT
+# --------------------------------
 user_input = st.chat_input("Type your message...")
 
 if user_input:
-    st.session_state.chat_history.append(("You", user_input))
+
+    # Save user message
+    chat_history.append(("You", user_input))
+
+    # Rename chat from first message
+    if st.session_state.chats[current_thread] == "New Chat":
+        st.session_state.chats[current_thread] = user_input[:30]
 
     # Show user instantly
-    st.markdown(f'<div class="user-msg">{user_input}</div>', unsafe_allow_html=True)
-
-    # Streaming response
-    response = requests.post(
-        API_URL,
-        json={"message": user_input},
-        stream=True
-    )
-
-    bot_reply = ""
-    placeholder = st.empty()
-
-    for chunk in response.iter_content(chunk_size=15):
-        if chunk:
-            text = chunk.decode("utf-8", errors="ignore")
-            bot_reply += text
-
-            placeholder.markdown(
-                f'<div class="bot-msg">{bot_reply}<span class="cursor"></span></div>',
-                unsafe_allow_html=True
-            )
-            time.sleep(0.01)  # smooth animation
-
-    # Final render
-    placeholder.markdown(
-        f'<div class="bot-msg">{bot_reply}</div>',
+    st.markdown(
+        f'<div class="user-msg">{user_input}</div>',
         unsafe_allow_html=True
     )
 
-    st.session_state.chat_history.append(("Bot", bot_reply))
+    placeholder = st.empty()
+
+    bot_reply = ""
+
+    try:
+
+        response = requests.post(
+            API_URL,
+            json={
+                "message": user_input,
+                "thread_id": current_thread
+            },
+            stream=True,
+            timeout=120
+        )
+
+        response.raise_for_status()
+
+        for chunk in response.iter_content(chunk_size=10):
+
+            if chunk:
+
+                text = chunk.decode(
+                    "utf-8",
+                    errors="ignore"
+                )
+
+                bot_reply += text
+
+                placeholder.markdown(
+                    f"""
+                    <div class="bot-msg">
+                    {bot_reply}▌
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+        placeholder.markdown(
+            f"""
+            <div class="bot-msg">
+            {bot_reply}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    except Exception as e:
+
+        bot_reply = f"Backend Error: {str(e)}"
+
+        placeholder.markdown(
+            f"""
+            <div class="bot-msg">
+            {bot_reply}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # Save bot response
+    chat_history.append(("Bot", bot_reply))
+
+    st.session_state.chat_data[current_thread] = chat_history
+
