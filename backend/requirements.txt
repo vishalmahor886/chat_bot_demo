@@ -12,6 +12,7 @@ langchain-community
 langchain-groq
 langchain-text-splitters
 langgraph-checkpoint-sqlite
+secure-smtplib
 
 sentence-transformers
 pypdf

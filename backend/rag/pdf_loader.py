@@ -2,7 +2,9 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from backend.rag.vector_store import vectorstores
 
-def load_pdf_data(file_path:str):
+import os
+
+def load_pdf_data(file_path: str, thread_id: str = None):
     loader = PyPDFLoader(file_path)
     document = loader.load()
 
@@ -13,12 +15,14 @@ def load_pdf_data(file_path:str):
 
     chunks = splitter.split_documents(document)
 
-    file_name = file_path.split("/")[-1]
+    file_name = os.path.basename(file_path)
 
     for chunk in chunks:
         chunk.metadata["source"] = file_name
+        if thread_id:
+            chunk.metadata["thread_id"] = thread_id
 
     vectorstores.add_documents(chunks)
-    return len(chunks)
+    return len(chunks), len(document)
 
 
