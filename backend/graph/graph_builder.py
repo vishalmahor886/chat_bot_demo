@@ -9,8 +9,10 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from dotenv import load_dotenv
 from typing import TypedDict,Annotated
 
-from backend.memory import memory
-from backend.tool import web_search
+from backend.memory.memory import memory
+
+from backend.tools.web_search import web_search
+from backend.tools.rag_tool import rag_tool
 import os
 
 
@@ -26,7 +28,7 @@ llm_endpoint = HuggingFaceEndpoint(
 )
 llm = ChatHuggingFace(llm=llm_endpoint)
 
-tools = [web_search]
+tools = [web_search, rag_tool]
 
 llm_with_tools = llm.bind_tools(tools)
 
@@ -35,8 +37,16 @@ def chatbot(state: MessagesState):
     messages = [
         SystemMessage(
             content=(
-                "You are a helpful AI assistant. "
-                "Use web_search whenever current or live information is needed."
+                """
+You are an AI Assistant.
+
+Rules:
+
+1. Use rag_search for uploaded documents.
+2. Use web_search for current information.
+3. Prefer document information if available.
+4. Cite the PDF source when answering.
+"""
             )
         )
     ] + state["messages"]
@@ -58,6 +68,10 @@ builder.add_conditional_edges(
 )
 builder.add_edge("tools","chatbot")
 builder.set_entry_point("chatbot")
+
+print("memory_saver =", memory)
+print("type =", type(memory))
+
 graph = builder.compile(
     checkpointer=memory
 )
