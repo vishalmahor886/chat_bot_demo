@@ -13,6 +13,8 @@ from backend.memory.memory import memory
 
 from backend.tools.web_search import web_search
 from backend.tools.rag_tool import rag_tool
+from backend.tools.coding_tool import coding_agent
+from backend.agents.email_sender_agent import email_sender
 import os
 
 
@@ -28,7 +30,7 @@ llm_endpoint = HuggingFaceEndpoint(
 )
 llm = ChatHuggingFace(llm=llm_endpoint)
 
-tools = [web_search, rag_tool]
+tools = [web_search, rag_tool, coding_agent, email_sender ]
 
 llm_with_tools = llm.bind_tools(tools)
 
@@ -38,14 +40,39 @@ def chatbot(state: MessagesState):
         SystemMessage(
             content=(
                 """
-You are an AI Assistant.
+
+You are a Multi Agent AI Assistant.
+
+Available Agents:
+1. coding_tool
+    - write code
+    - debug code
+    - explain code
+
+2. rag_tool
+    - search inside pdfs
+    - answer questions based on pdfs
+
+3. web_search
+    - search on internet
+    - answer questions based on internet
+
+4. Email Sender Tool
+    - When user asks to send an email,
+    extract:
+        - recipient email
+        - subject
+        - body
+
+and call email_sender.
 
 Rules:
-
-1. Use rag_search for uploaded documents.
-2. Use web_search for current information.
-3. Prefer document information if available.
-4. Cite the PDF source when answering.
+1. Choose the tool that best suits the user's query.
+2. If the query is about coding, use coding_tool.
+3. If the query is about pdfs or Documents, use rag_tool.
+4. If the query is about internet, use web_search.
+5. If the query is about send email, use email_sender.
+5. If the query is about multiple things, use the tool that best suits the user's query.
 """
             )
         )
