@@ -15,6 +15,7 @@ from backend.tools.web_search import web_search
 from backend.tools.rag_tool import rag_tool
 from backend.tools.coding_tool import coding_agent
 from backend.agents.email_sender_agent import email_sender
+from backend.agents.research_agent import research_tool_agent
 import os
 
 
@@ -30,7 +31,7 @@ llm_endpoint = HuggingFaceEndpoint(
 )
 llm = ChatHuggingFace(llm=llm_endpoint)
 
-tools = [web_search, rag_tool, coding_agent, email_sender ]
+tools = [web_search, rag_tool, coding_agent, email_sender, research_tool_agent ]
 
 llm_with_tools = llm.bind_tools(tools)
 
@@ -63,6 +64,13 @@ Available Agents:
         - recipient email
         - subject
         - body
+5. Research Tool
+    -latest news
+    - current events
+    - internet research
+    - company information
+    - comparisons
+    - market trends
 
 and call email_sender.
 
@@ -72,7 +80,8 @@ Rules:
 3. If the query is about pdfs or Documents, use rag_tool.
 4. If the query is about internet, use web_search.
 5. If the query is about send email, use email_sender.
-5. If the query is about multiple things, use the tool that best suits the user's query.
+6. If the query is about research, use research_tool_agent.
+7. If the query is about multiple things, use the tool that best suits the user's query.
 """
             )
         )

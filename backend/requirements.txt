@@ -17,4 +17,5 @@ secure-smtplib
 sentence-transformers
 pypdf
 chromadb
+tavily-python
 
